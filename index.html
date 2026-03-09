@@ -2,46 +2,50 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Ami Zombie Survival</title>
+<title>Ami Survival Arena</title>
 
 <style>
+
 body{
 margin:0;
-background:black;
+background:#0e0e0e;
 color:white;
-text-align:center;
 font-family:sans-serif;
+text-align:center;
 }
 
 canvas{
-background:#111;
+background:#1a1a1a;
 display:block;
 margin:auto;
-border:2px solid white;
+border:2px solid #444;
 }
 
 #ui{
 font-size:20px;
 margin:10px;
 }
+
 </style>
 </head>
 
 <body>
 
-<h1>Ami Zombie Survival 🧟</h1>
+<h1>Ami Survival Arena</h1>
 
 <div id="ui">
 Score: <span id="score">0</span>
 HP: <span id="hp">5</span>
 </div>
 
-<canvas id="game" width="600" height="500"></canvas>
+<canvas id="game" width="700" height="500"></canvas>
 
 <script>
 
-const canvas=document.getElementById("game")
-const ctx=canvas.getContext("2d")
+const canvas = document.getElementById("game")
+const ctx = canvas.getContext("2d")
+
+let state="title"
 
 let keys={}
 let bullets=[]
@@ -49,41 +53,69 @@ let enemies=[]
 
 let score=0
 let hp=5
-let gameOver=false
 
 const player={
-x:300,
+x:350,
 y:250,
 size:20,
 speed:4
 }
 
 document.addEventListener("keydown",e=>{
+
 keys[e.key]=true
 
-if(e.key===" "){
+if(state==="title"){
+state="game"
+}
+
+if(e.key===" " && state==="game"){
 bullets.push({x:player.x,y:player.y})
 }
 
+if(e.key==="r" && state==="gameover"){
+restart()
+}
+
 })
 
-document.addEventListener("keyup",e=>keys[e.key]=false)
+document.addEventListener("keyup",e=>{
+keys[e.key]=false
+})
+
+function restart(){
+
+score=0
+hp=5
+enemies=[]
+bullets=[]
+player.x=350
+player.y=250
+
+document.getElementById("score").textContent=score
+document.getElementById("hp").textContent=hp
+
+state="game"
+
+}
 
 function spawnEnemy(){
 
+if(state!=="game")return
+
 enemies.push({
-x:Math.random()*600,
+x:Math.random()*700,
 y:Math.random()*500,
-speed:1+Math.random()*1.5
+speed:1+Math.random()*2
 })
 
 }
 
-setInterval(spawnEnemy,1200)
+setInterval(spawnEnemy,1000)
 
 function update(){
 
-if(gameOver)return
+if(state!=="game")return
 
 if(keys["w"])player.y-=player.speed
 if(keys["s"])player.y+=player.speed
@@ -91,10 +123,11 @@ if(keys["a"])player.x-=player.speed
 if(keys["d"])player.x+=player.speed
 
 bullets.forEach(b=>{
-b.y-=6
+b.y-=7
 })
 
 bullets.forEach((b,bi)=>{
+
 enemies.forEach((e,ei)=>{
 
 let dx=b.x-e.x
@@ -103,8 +136,8 @@ let dist=Math.sqrt(dx*dx+dy*dy)
 
 if(dist<15){
 
-enemies.splice(ei,1)
 bullets.splice(bi,1)
+enemies.splice(ei,1)
 
 score+=10
 document.getElementById("score").textContent=score
@@ -112,6 +145,7 @@ document.getElementById("score").textContent=score
 }
 
 })
+
 })
 
 enemies.forEach((e,ei)=>{
@@ -131,9 +165,7 @@ document.getElementById("hp").textContent=hp
 enemies.splice(ei,1)
 
 if(hp<=0){
-
-gameOver=true
-
+state="gameover"
 }
 
 }
@@ -144,28 +176,45 @@ gameOver=true
 
 function draw(){
 
-ctx.clearRect(0,0,600,500)
+ctx.clearRect(0,0,700,500)
+
+if(state==="title"){
+
+ctx.fillStyle="white"
+ctx.font="40px sans-serif"
+ctx.fillText("Ami Survival Arena",200,200)
+
+ctx.font="20px sans-serif"
+ctx.fillText("Press any key to start",260,260)
+
+return
+}
 
 ctx.fillStyle="lime"
-ctx.fillRect(player.x,player.y,20,20)
+ctx.fillRect(player.x,player.y,player.size,player.size)
 
 ctx.fillStyle="yellow"
+
 bullets.forEach(b=>{
 ctx.fillRect(b.x,b.y,4,10)
 })
 
 ctx.fillStyle="red"
+
 enemies.forEach(e=>{
 ctx.beginPath()
 ctx.arc(e.x,e.y,10,0,Math.PI*2)
 ctx.fill()
 })
 
-if(gameOver){
+if(state==="gameover"){
 
 ctx.fillStyle="white"
-ctx.font="40px sans-serif"
-ctx.fillText("GAME OVER",200,250)
+ctx.font="50px sans-serif"
+ctx.fillText("GAME OVER",220,250)
+
+ctx.font="20px sans-serif"
+ctx.fillText("Press R to restart",260,300)
 
 }
 
@@ -175,6 +224,7 @@ function loop(){
 
 update()
 draw()
+
 requestAnimationFrame(loop)
 
 }
