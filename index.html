@@ -2,110 +2,139 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Ami 3D Adventure</title>
+<title>Ami Zombie Survival</title>
 
 <style>
 body{
 margin:0;
-overflow:hidden;
 background:black;
 color:white;
+text-align:center;
 font-family:sans-serif;
 }
 
+canvas{
+background:#111;
+display:block;
+margin:auto;
+border:2px solid white;
+}
+
 #ui{
-position:absolute;
-top:10px;
-left:10px;
 font-size:20px;
+margin:10px;
 }
 </style>
-
 </head>
 
 <body>
 
-<div id="ui">Score: <span id="score">0</span></div>
+<h1>Ami Zombie Survival 🧟</h1>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<div id="ui">
+Score: <span id="score">0</span>
+HP: <span id="hp">5</span>
+</div>
+
+<canvas id="game" width="600" height="500"></canvas>
 
 <script>
 
-let scene = new THREE.Scene()
-let camera = new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000)
-let renderer = new THREE.WebGLRenderer()
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
 
-renderer.setSize(window.innerWidth,window.innerHeight)
-document.body.appendChild(renderer.domElement)
+let keys={}
+let bullets=[]
+let enemies=[]
 
-camera.position.z = 5
-camera.position.y = 5
-camera.rotation.x = -0.6
-
-let light = new THREE.DirectionalLight(0xffffff,1)
-light.position.set(5,10,7)
-scene.add(light)
-
-let floorGeo = new THREE.PlaneGeometry(50,50)
-let floorMat = new THREE.MeshStandardMaterial({color:0x333333})
-let floor = new THREE.Mesh(floorGeo,floorMat)
-
-floor.rotation.x = -Math.PI/2
-scene.add(floor)
-
-let playerGeo = new THREE.BoxGeometry(1,1,1)
-let playerMat = new THREE.MeshStandardMaterial({color:0x00ff00})
-let player = new THREE.Mesh(playerGeo,playerMat)
-
-player.position.y = 0.5
-scene.add(player)
-
-let coins=[]
 let score=0
+let hp=5
+let gameOver=false
 
-function spawnCoin(){
+const player={
+x:300,
+y:250,
+size:20,
+speed:4
+}
 
-let geo = new THREE.CylinderGeometry(0.3,0.3,0.1,20)
-let mat = new THREE.MeshStandardMaterial({color:0xffff00})
-let coin = new THREE.Mesh(geo,mat)
+document.addEventListener("keydown",e=>{
+keys[e.key]=true
 
-coin.rotation.x = Math.PI/2
-coin.position.set((Math.random()-0.5)*20,0.3,(Math.random()-0.5)*20)
+if(e.key===" "){
+bullets.push({x:player.x,y:player.y})
+}
 
-scene.add(coin)
-coins.push(coin)
+})
+
+document.addEventListener("keyup",e=>keys[e.key]=false)
+
+function spawnEnemy(){
+
+enemies.push({
+x:Math.random()*600,
+y:Math.random()*500,
+speed:1+Math.random()*1.5
+})
 
 }
 
-for(let i=0;i<10;i++) spawnCoin()
-
-let keys={}
-
-document.addEventListener("keydown",e=>keys[e.key]=true)
-document.addEventListener("keyup",e=>keys[e.key]=false)
+setInterval(spawnEnemy,1200)
 
 function update(){
 
-if(keys["ArrowUp"]) player.position.z-=0.1
-if(keys["ArrowDown"]) player.position.z+=0.1
-if(keys["ArrowLeft"]) player.position.x-=0.1
-if(keys["ArrowRight"]) player.position.x+=0.1
+if(gameOver)return
 
-coins.forEach((c,i)=>{
+if(keys["w"])player.y-=player.speed
+if(keys["s"])player.y+=player.speed
+if(keys["a"])player.x-=player.speed
+if(keys["d"])player.x+=player.speed
 
-let dx=player.position.x-c.position.x
-let dz=player.position.z-c.position.z
-let dist=Math.sqrt(dx*dx+dz*dz)
+bullets.forEach(b=>{
+b.y-=6
+})
 
-if(dist<1){
+bullets.forEach((b,bi)=>{
+enemies.forEach((e,ei)=>{
 
-scene.remove(c)
-coins.splice(i,1)
+let dx=b.x-e.x
+let dy=b.y-e.y
+let dist=Math.sqrt(dx*dx+dy*dy)
 
-score++
+if(dist<15){
+
+enemies.splice(ei,1)
+bullets.splice(bi,1)
+
+score+=10
 document.getElementById("score").textContent=score
 
-spawnCoin()
+}
+
+})
+})
+
+enemies.forEach((e,ei)=>{
+
+let dx=player.x-e.x
+let dy=player.y-e.y
+let dist=Math.sqrt(dx*dx+dy*dy)
+
+e.x+=dx/dist*e.speed
+e.y+=dy/dist*e.speed
+
+if(dist<20){
+
+hp--
+document.getElementById("hp").textContent=hp
+
+enemies.splice(ei,1)
+
+if(hp<=0){
+
+gameOver=true
+
+}
 
 }
 
@@ -113,17 +142,44 @@ spawnCoin()
 
 }
 
-function animate(){
+function draw(){
 
-requestAnimationFrame(animate)
+ctx.clearRect(0,0,600,500)
 
-update()
+ctx.fillStyle="lime"
+ctx.fillRect(player.x,player.y,20,20)
 
-renderer.render(scene,camera)
+ctx.fillStyle="yellow"
+bullets.forEach(b=>{
+ctx.fillRect(b.x,b.y,4,10)
+})
+
+ctx.fillStyle="red"
+enemies.forEach(e=>{
+ctx.beginPath()
+ctx.arc(e.x,e.y,10,0,Math.PI*2)
+ctx.fill()
+})
+
+if(gameOver){
+
+ctx.fillStyle="white"
+ctx.font="40px sans-serif"
+ctx.fillText("GAME OVER",200,250)
 
 }
 
-animate()
+}
+
+function loop(){
+
+update()
+draw()
+requestAnimationFrame(loop)
+
+}
+
+loop()
 
 </script>
 
